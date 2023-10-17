@@ -11,7 +11,7 @@ import { getIPFromReq } from '../utils/get-ip-from-req.js';
  * Verify the passed JWT and assign the user ID and role to `req`
  */
 export const handler = async (req: Request, _res: Response, next: NextFunction) => {
-	const defaultAccountability: Accountability = {
+	let defaultAccountability: Accountability = {
 		user: null,
 		role: null,
 		admin: false,
@@ -27,9 +27,11 @@ export const handler = async (req: Request, _res: Response, next: NextFunction) 
 
 	const database = getDatabase();
 
+	const accountability = await getAccountabilityForToken(req.token, defaultAccountability);
+
 	const customAccountability = await emitter.emitFilter(
 		'authenticate',
-		defaultAccountability,
+		accountability,
 		{
 			req,
 		},
@@ -40,12 +42,12 @@ export const handler = async (req: Request, _res: Response, next: NextFunction) 
 		}
 	);
 
-	if (customAccountability && isEqual(customAccountability, defaultAccountability) === false) {
+	if (customAccountability && isEqual(customAccountability, accountability) === false) {
 		req.accountability = customAccountability;
 		return next();
 	}
 
-	req.accountability = await getAccountabilityForToken(req.token, defaultAccountability);
+	req.accountability = req.accountability
 
 	return next();
 };
